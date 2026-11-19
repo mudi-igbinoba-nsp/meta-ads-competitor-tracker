@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "daemons": {
+    "collector": {
+      "root": ".",
+      "entrypoint": "Dockerfile",
+      "command": ["python", "-m", "tracker.worker.scheduler"],
+      "instances": { "iad1": 1 }
+    }
+  }
+}

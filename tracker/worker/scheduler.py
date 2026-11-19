@@ -14,6 +14,7 @@ through Apify, leaves it paused for the next worker.
 
 from __future__ import annotations
 
+import argparse
 import logging
 import os
 import signal
@@ -318,7 +319,7 @@ def _stop_handler(lock: WorkerLock):
     return stop
 
 
-def main() -> None:
+def main(*, on_demand: bool = False) -> None:
     logging.basicConfig(
         level=logging.INFO, stream=sys.stdout,
         format="%(asctime)s - %(levelname)s - %(message)s",
@@ -328,7 +329,9 @@ def main() -> None:
         signal.signal(sig, _stop_handler(lock))
     logger.info("scheduler started (poll every %ds)", POLL_SECONDS)
     # a resumed run stands for the startup run: collecting again would pay twice
-    _run_once("startup", resume=_take_the_lock(lock))
+    resume = _take_the_lock(lock)
+    if resume is not None or not on_demand:
+        _run_once("startup", resume=resume)
     last_run = time.time()
     while True:
         time.sleep(POLL_SECONDS)
@@ -343,7 +346,9 @@ def main() -> None:
             # its heartbeat goes stale
             _close_orphan_runs()
             collect_now = db.consume_collect_now()
-            if _should_run(time.time(), last_run, _interval_seconds(), collect_now):
+            if collect_now or (
+                not on_demand and _should_run(time.time(), last_run, _interval_seconds(), False)
+            ):
                 if collect_now:
                     logger.info("collect-now requested from the UI: starting a run")
                 else:
@@ -355,4 +360,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run the tracker collection worker.")
+    parser.add_argument("--on-demand", action="store_true", help="Run when requested from the web UI.")
+    main(on_demand=parser.parse_args().on_demand)

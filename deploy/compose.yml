@@ -1,0 +1,29 @@
+services:
+  web:
+    ports: !reset []
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      TRACKER_HOSTNAME: ${TRACKER_HOSTNAME:?Set TRACKER_HOSTNAME to the tracker DNS name}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - type: bind
+        source: ${TRACKER_ACCESS_FILE:?Set TRACKER_ACCESS_FILE to the path of the Caddy access file}
+        target: /etc/caddy/tracker-users
+        read_only: true
+        bind:
+          create_host_path: false
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

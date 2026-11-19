@@ -1,0 +1,9 @@
+{$TRACKER_HOSTNAME} {
+	basic_auth {
+		import /etc/caddy/tracker-users
+	}
+
+	reverse_proxy web:8000 {
+		header_up -Authorization
+	}
+}
